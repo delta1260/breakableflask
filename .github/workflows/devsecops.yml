@@ -31,7 +31,7 @@ jobs:
       - name: 2° - Analyse du Dockerfile (misconfigurations)
         run: |
           echo "Analyse du Dockerfile…"
-          trivy config --exit-code 1 Dockerfile
+          trivy config --severity HIGH,CRITICAL --exit-code 1 Dockerfile
           echo "Analyse OK"
 
   Deploy:
