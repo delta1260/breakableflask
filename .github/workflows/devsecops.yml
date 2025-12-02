@@ -4,18 +4,50 @@ jobs:
   Dependances:
     runs-on: ubuntu-latest
     steps:
-      - name: Dependances
+      - name: Checkout du code
+        uses: actions/checkout@v4
+        
+      - name: Installation de Trivy
+        # Utilise l'action officielle de Trivy pour une installation facile
+        uses: aquasecurity/trivy-action@master
+        with:
+          # Spécifie les options d'installation, si nécessaire
+          skip-db-update: true
+          
+      - name: 1° - Contrôle des dépendances (requirements.txt) avec Trivy
         run: |
-          echo "ecrire ici le scrypt de contrôle des dépendances"
+          echo "Démarrage de l'analyse des dépendances (requirements.txt) avec Trivy..."
+          # Trivy scan pour les vulnérabilités dans le fichier 'requirements.txt'
+          # --format table pour une sortie lisible
+          # --exit-code 1 pour faire échouer le job si des vulnérabilités sont trouvées
+          trivy fs --format table --exit-code 1 --security-checks vuln requirements.txt
+          echo "Analyse des dépendances terminée."
+
   Dockerfile:
     runs-on: ubuntu-latest
+    # Le job ne s'exécute que si 'Dependances' réussit
     needs: Dependances
     steps:
-      - name: Test Dockerfile
+      - name: Checkout du code
+        uses: actions/checkout@v4
+        
+      - name: Installation de Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          skip-db-update: true
+
+      - name: 2° - Contrôle du Dockerfile avec Trivy (Misconfigurations)
         run: |
-          echo "ecrire ici le scrypt de contrôle du Dockerfile"
+          echo "Démarrage de l'analyse du Dockerfile pour les mauvaises configurations (misconfigurations) avec Trivy..."
+          # Trivy scan pour les erreurs de configuration du Dockerfile
+          # --scanners config pour cibler l'analyse des configurations (par défaut pour les fichiers IAC/Dockerfile)
+          # --exit-code 1 pour faire échouer le job si des problèmes de configuration sont trouvés
+          trivy config --exit-code 1 Dockerfile
+          echo "Analyse du Dockerfile terminée."
+
   Deploy:
     runs-on: ubuntu-latest
+    # Le job ne s'exécute que si 'Dockerfile' réussit
     needs: Dockerfile
     steps:
       - name: Deploy
