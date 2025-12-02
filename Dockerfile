@@ -1,18 +1,22 @@
-FROM python:3.12-slim-trixie
+FROM python:3.10-slim
 
-ENV DEBIAN_FRONTEND=noninteractive
+# Mise à jour sécurisée des paquets
+RUN apt-get update && apt-get upgrade -y && apt-get clean
 
-RUN apt-get update && apt-get upgrade -y && apt-get clean && rm -rf /var/lib/apt/lists/*
-
+# Répertoire de travail
 WORKDIR /app
-COPY requirements.txt .
 
-RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
+# Copier uniquement les fichiers nécessaires
+COPY requirements.txt requirements.txt
 
+# Installation des dépendances Python
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copier le reste du projet
 COPY . .
 
-RUN useradd -m -u 1000 appuser
+# Utilisateur non-root pour réduire les risques
+RUN useradd -m appuser
 USER appuser
 
-EXPOSE 4000
-CMD ["python", "main.py"]
+CMD ["python3", "main.py"]
