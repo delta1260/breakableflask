@@ -10,31 +10,56 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Scan requirements.txt avec Trivy
+        # 1. Compléter le job Dépendances pour contrôler requirements.txt
+        # Ajout de l'option --exit-code 1 pour faire échouer le job si des HIGH/CRITICAL sont trouvées.
         run: |
           mkdir -p $HOME/.cache/trivy
           docker run --rm \
             -v "${{ github.workspace }}":/project \
             -v "$HOME/.cache/trivy":/root/.cache/ \
-            aquasec/trivy:latest fs /project/requirements.txt
-
+            aquasec/trivy:latest fs \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            /project/requirements.txt
+        
   Dockerfile:
     runs-on: ubuntu-latest
-    needs: Dependances
+    needs: Dependances # S'assure que requirements.txt est propre avant de construire
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Build de l'image Docker
+        # Le Dockerfile doit être durci (basé sur Alpine, USER non-root, etc.)
         run: |
           docker build -t imgvulne:1.1 .
+      
+      # 2. Compléter le job Dockerfile pour contrôler le Dockerfile
+      - name: Scan du Dockerfile (Misconfiguration) avec Trivy
+        # Ajout du scanner 'config' pour analyser le Dockerfile (secrets, mauvaise configuration)
+        # --exit-code 1 force l'échec si des HIGH/CRITICAL sont trouvées.
+        run: |
+          mkdir -p $HOME/.cache/trivy
+          docker run --rm \
+            -v "${{ github.workspace }}":/project \
+            -v "$HOME/.cache/trivy":/root/.cache/ \
+            aquasec/trivy:latest fs \
+            --security-checks config \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            /project/Dockerfile
 
-      - name: Scan de l'image Docker avec Trivy
+      - name: Scan de l'image Docker (Vulnérabilités OS) avec Trivy
+        # On conserve le scan de l'image pour les vulnérabilités du système d'exploitation
         run: >
           mkdir -p $HOME/.cache/trivy &&
           docker run --rm \
-          -v /var/run/docker.sock:/var/run/docker.sock
-          -v "$HOME/.cache/trivy":/root/.cache/
-          aquasec/trivy:latest image --format json --severity HIGH,CRITICAL imgvulne:1.1 |
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v "$HOME/.cache/trivy":/root/.cache/ \
+          aquasec/trivy:latest image \
+          --severity HIGH,CRITICAL \
+          --exit-code 1 \
+          imgvulne:1.1 |
           jq -r '["TARGET","PACKAGE","INSTALLED","VULN","SEVERITY"],
             (.Results[]? as $r | $r.Vulnerabilities[]?
               | [$r.Target, .PkgName, .InstalledVersion, .VulnerabilityID, .Severity])
@@ -43,7 +68,7 @@ jobs:
 
   Deploy:
     runs-on: ubuntu-latest
-    needs: Dockerfile
+    needs: Dockerfile # Dépend du succès complet du job Dockerfile (misconfig + image scan)
     steps:
       - name: Deploy
         run: echo "✔ Déploiement possible : les scans sont OK"
