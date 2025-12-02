@@ -22,7 +22,7 @@ jobs:
             --exit-code 1 \
             /project/requirements.txt
         
-  Dockerfile:
+  Dockerfile: # Job Dockerfile correctement indenté
     runs-on: ubuntu-latest
     needs: Dependances # S'assure que requirements.txt est propre avant de construire
     steps:
@@ -33,9 +33,8 @@ jobs:
         # Le Dockerfile doit être durci (basé sur Alpine, USER non-root, etc.)
         run: |
           docker build -t imgvulne:1.1 .
-      
-      # 2. Compléter le job Dockerfile pour contrôler le Dockerfile
-      - name: Scan du Dockerfile (Misconfiguration) avec Trivy
+
+      - name: Scan du Dockerfile (Misconfiguration) avec Trivy # 2. Compléter le job Dockerfile pour contrôler le Dockerfile
         # Ajout du scanner 'config' pour analyser le Dockerfile (secrets, mauvaise configuration)
         # --exit-code 1 force l'échec si des HIGH/CRITICAL sont trouvées.
         run: |
@@ -66,7 +65,7 @@ jobs:
             | @tsv' |
           column -t -s $'\t'
 
-  Deploy:
+  Deploy: # Job Deploy correctement indenté
     runs-on: ubuntu-latest
     needs: Dockerfile # Dépend du succès complet du job Dockerfile (misconfig + image scan)
     steps:
